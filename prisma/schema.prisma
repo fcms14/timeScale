@@ -32,12 +32,12 @@ model MarketHistory {
   symbol   Symbol   @relation(fields: [symbolId], references: [id])
   symbolId Int
   dt       DateTime
-  open     Float
-  high     Float
-  low      Float
-  close    Float
-  volume   Float
+  open     Float?
+  high     Float?
+  low      Float?
+  close    Float?
+  volume   Float?
 
-  @@id([symbolId, dt])
-  @@index([symbolId, dt(sort: Desc)])
+  @@id([dt, symbolId])
+  @@index([dt(sort: Desc), symbolId])
 }
