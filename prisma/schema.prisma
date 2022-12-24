@@ -38,6 +38,6 @@ model MarketHistory {
   close    Float?
   volume   Float?
 
-  @@id([dt, symbolId])
-  @@index([dt(sort: Desc), symbolId])
+  @@id([symbolId, dt])
+  @@index([symbolId, dt(sort: Desc)])
 }
