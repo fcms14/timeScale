@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { MarketHistory, Prisma } from '@prisma/client';
+import { Symbol } from '../symbols/entities/symbol.entity';
 
 @Injectable()
 export class MarketHistoryService {
@@ -10,20 +11,20 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
-  async findTicker(where: { ticker: string, exchange: { name: string } }): Promise<MarketHistory | any> {
-    try { return await this.prisma.symbol.findFirstOrThrow({ include: { exchange: true }, where }); }
-    catch (error) { return { error: error }; }
-  }
-
   async fetchAll(exchange: string, ticker: string, since: Date): Promise<MarketHistory | any> {
     const htmlEncode = ticker.replace('/', '%2F');
-    const url = `https://ccxt-swagger.up.railway.app/market-history/${exchange}/${htmlEncode}/1m?i_since=${since.getTime()}&i_limit=5000`;
+    const url = `https://ccxt-swagger.up.railway.app/market-history/${exchange}/${htmlEncode}/1m?i_since=${since.getTime()}&i_limit=1000`;
     try { return await this.httpService.axiosRef.get(url); }
     catch (error) { return { error: error }; }
   }
 
-  async create(symbol: any, data: any): Promise<MarketHistory | any> {
+  async create(symbol: Symbol, lastSync: Date): Promise<MarketHistory | any> {
     try {
+      const response = await this.fetchAll(symbol.exchange.name, symbol.ticker, lastSync);
+
+      if (response.error) return { error: response }
+      const data = response.data;
+
       let createMany = [];
       for (let line of data) {
         createMany = [
@@ -45,13 +46,11 @@ export class MarketHistoryService {
       const update = createMany.pop();
       update.dt = new Date(new Date(update.dt).setMinutes(new Date(update.dt).getMinutes() + 1));
       console.log(new Date() + " - " + update.dt + " - Rows: " + rowsInserted.count);
-      
+
       await this.prisma.symbol.update({ data: { lastSync: update.dt }, where: { id: update.symbolId } });
 
       if (new Date().getTime() - 90000 > update.dt.getTime()) {
-        const response = await this.fetchAll(symbol.exchange.name, symbol.ticker, update.dt);
-        if (response.error) return { error: response }
-        await this.create(symbol, response.data);
+        await this.create(symbol, update.dt);
       }
 
       return { rowsInserted: rowsInserted.count, lastSync: update.dt, dateNow: new Date() };

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { SymbolsService } from 'src/symbols/symbols.service';
 import { MarketHistoryService } from './market-history.service';
 import { CreateMarketHistoryDto } from './dto/create-market-history.dto';
 import { ApiCreatedResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -9,7 +10,10 @@ import { MarketHistory as Entity } from './entities/market-history.entity';
 @ApiTags('marketHistory')
 @Controller('market-history')
 export class MarketHistoryController {
-  constructor(private readonly marketHistoryService: MarketHistoryService) { }
+  constructor(
+    private readonly marketHistoryService: MarketHistoryService,
+    private readonly symbolsService: SymbolsService
+  ) { }
 
   // @Post()
   // create(@Body() createMarketHistoryDto: CreateMarketHistoryDto) {
@@ -31,11 +35,9 @@ export class MarketHistoryController {
     @Param('exchange') name: string,
     @Param('ticker') ticker: string
   ) {
-    const symbol = await this.marketHistoryService.findTicker({ ticker, exchange: { name } });
+    const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'SYMBOL NOT FOUND', message: symbol.error }, HttpStatus.NOT_FOUND);
-    const response = await this.marketHistoryService.fetchAll(symbol.exchange.name, symbol.ticker, symbol.lastSync);
-    if (response.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'DATA NOT FOUND', message: response.error }, HttpStatus.NOT_FOUND);
-    const created = await this.marketHistoryService.create(symbol, response.data);
+    const created = await this.marketHistoryService.create(symbol, symbol.lastSync);
     if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
 
     return created;
