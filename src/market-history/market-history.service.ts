@@ -11,16 +11,16 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
-  async fetchAll(exchange: string, ticker: string, since: Date): Promise<MarketHistory | any> {
-    const htmlEncode = ticker.replace('/', '%2F');
-    const url = `https://ccxt-swagger.up.railway.app/market-history/${exchange}/${htmlEncode}/1m?i_since=${since.getTime()}&i_limit=1000`;
+  async fetchAll(symbol: Symbol): Promise<MarketHistory | any> {
+    const htmlEncode = symbol.ticker.replace('/', '%2F');
+    const url = `https://ccxt-swagger.up.railway.app/market-history/${symbol.exchange.name}/${htmlEncode}/1m?i_since=${symbol.lastSync.getTime()}&i_limit=${symbol.exchange.limit}`;
     try { return await this.httpService.axiosRef.get(url); }
     catch (error) { return { error: error }; }
   }
 
-  async create(symbol: Symbol, lastSync: Date): Promise<MarketHistory | any> {
+  async create(symbol: Symbol): Promise<MarketHistory | any> {
     try {
-      const response = await this.fetchAll(symbol.exchange.name, symbol.ticker, lastSync);
+      const response = await this.fetchAll(symbol);
 
       if (response.error) return { error: response }
       const data = response.data;
@@ -42,16 +42,18 @@ export class MarketHistoryService {
       }
 
       const update = createMany.pop();
-      update.dt = new Date(update.dt); // new Date(new Date(update.dt).setMinutes(new Date(update.dt).getMinutes() + 1));
-      const rowsInserted = await this.prisma.marketHistory.createMany({ data: createMany, skipDuplicates: true });
-      await this.prisma.symbol.update({ data: { lastSync: update.dt }, where: { id: update.symbolId } });
-      console.log(`${new Date()} -  ${update.dt} - Rows: ${rowsInserted.count} -> ${symbol.exchange.name} / ${symbol.ticker}`);
+      // update.dt = new Date(update.dt); // new Date(new Date(update.dt).setMinutes(new Date(update.dt).getMinutes() + 1));
 
-      if ((new Date().getTime() - update.dt.getTime()) > 10800000) {
-        await this.create(symbol, update.dt);
+      const rowsInserted  = await this.prisma.marketHistory.createMany({ data: createMany, skipDuplicates: true });
+      const updatedSymbol = await this.prisma.symbol.update({ data: { lastSync: update.dt }, where: { id: update.symbolId }, include: { exchange: true } });
+
+      console.log(`${new Date()} -  ${updatedSymbol.lastSync} - Rows: ${rowsInserted.count} -> ${symbol.exchange.name} / ${symbol.ticker}`);
+
+      if ((new Date().getTime() - updatedSymbol.lastSync.getTime()) > 10800000) {
+        await this.create(updatedSymbol);
       }
 
-      return { rowsInserted: rowsInserted.count, lastSync: update.dt, dateNow: new Date() };
+      return { rowsInserted: rowsInserted.count, lastSync: updatedSymbol.lastSync, dateNow: new Date() };
     }
     catch (error) { return { error: error }; }
   }

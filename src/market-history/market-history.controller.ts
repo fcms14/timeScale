@@ -38,7 +38,7 @@ export class MarketHistoryController {
   ) {
     const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'SYMBOL NOT FOUND', message: symbol.error }, HttpStatus.NOT_FOUND);
-    const created = await this.marketHistoryService.create(symbol, symbol.lastSync);
+    const created = await this.marketHistoryService.create(symbol);
     if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
 
     return created;
@@ -57,7 +57,7 @@ export class MarketHistoryController {
       }
 
       if (new Date().getTime() + 130000 > symbol.lastSync.getTime()) {
-        const created = await this.marketHistoryService.create(symbol, symbol.lastSync);
+        const created = await this.marketHistoryService.create(symbol);
         if (created.error) console.log(created.error);
         console.log(symbol.exchange.name, created);
       }

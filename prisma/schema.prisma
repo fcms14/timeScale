@@ -13,6 +13,7 @@ datasource db {
 model Exchange {
   id     Int      @id @default(autoincrement())
   name   String   @unique
+  limit  Int?
   Symbol Symbol[]
 }
 
