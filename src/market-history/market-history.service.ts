@@ -11,6 +11,27 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
+  async filterHistory(filter: { dt: { gte: Date, lte: Date | null }, symbol: { ticker: string, exchange: { name: string } } }) {
+    let where = {};
+    if (!filter.dt.lte) {
+      where = { dt: { gte: new Date(filter.dt.gte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
+    }
+    else {
+      where = { dt: { gte: new Date(filter.dt.gte), lte: new Date(filter.dt.lte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
+    }
+
+    try {
+      return await this.prisma.marketHistory.findMany({
+        // include: { symbol: { include: { exchange: true } } },
+        where,
+        orderBy: {
+          dt: 'asc'
+        },
+      });
+    }
+    catch (error) { return { error: error }; }
+  }
+
   async fetchOHLCV(symbol: Symbol): Promise<MarketHistory | any> {
     const htmlEncode = symbol.ticker.replace('/', '%2F');
     const url = `https://ccxt-swagger.up.railway.app/market-history/${symbol.exchange.name}/${htmlEncode}/1m?i_since=${symbol.lastSync.getTime()}&i_limit=${symbol.exchange.limit}`;
@@ -33,7 +54,7 @@ export class MarketHistoryService {
           }
         ]
       }
-      
+
       return createMany;
     }
     catch (error) { return { error: error }; }
