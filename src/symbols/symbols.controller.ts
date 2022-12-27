@@ -25,8 +25,11 @@ export class SymbolsController {
 
   @Get()
   @ApiOkResponse({ description: 'A list of symbols', type: Entity, isArray: true })
-  findAll() {
-    return this.symbolsService.findAll();
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No content' })
+  async findAll() {
+    const symbol = await this.symbolsService.findAll();
+    if (symbol.error) throw new HttpException({ status: HttpStatus.NO_CONTENT, message: symbol.error }, HttpStatus.NO_CONTENT);
+    return symbol;
   }
 
   @Get(':id')

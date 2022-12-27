@@ -41,24 +41,19 @@ export class MarketHistoryService {
         ]
       }
 
-      const rowsInserted = await this.prisma.marketHistory.createMany({ data: createMany, skipDuplicates: true });
-
       const update = createMany.pop();
-      update.dt = new Date(new Date(update.dt).setMinutes(new Date(update.dt).getMinutes() + 1));
-      console.log(new Date() + " - " + update.dt + " - Rows: " + rowsInserted.count);
-
+      update.dt = new Date(update.dt); // new Date(new Date(update.dt).setMinutes(new Date(update.dt).getMinutes() + 1));
+      const rowsInserted = await this.prisma.marketHistory.createMany({ data: createMany, skipDuplicates: true });
       await this.prisma.symbol.update({ data: { lastSync: update.dt }, where: { id: update.symbolId } });
+      console.log(`${new Date()} -  ${update.dt} - Rows: ${rowsInserted.count} -> ${symbol.exchange.name} / ${symbol.ticker}`);
 
-      if (new Date().getTime() - 90000 > update.dt.getTime()) {
+      if ((new Date().getTime() - update.dt.getTime()) > 10800000) {
         await this.create(symbol, update.dt);
       }
 
       return { rowsInserted: rowsInserted.count, lastSync: update.dt, dateNow: new Date() };
     }
-    catch (error) {
-      console.log(error);
-      return { error: error };
-    }
+    catch (error) { return { error: error }; }
   }
 
   // async findAll(): Promise<MarketHistory[]> {

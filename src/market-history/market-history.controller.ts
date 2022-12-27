@@ -6,6 +6,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs
 import { HttpException } from '@nestjs/common/exceptions';
 import { HttpStatus } from '@nestjs/common/enums';
 import { MarketHistory as Entity } from './entities/market-history.entity';
+import { Cron, CronExpression, Interval } from '@nestjs/schedule';
 
 @ApiTags('marketHistory')
 @Controller('market-history')
@@ -41,6 +42,26 @@ export class MarketHistoryController {
     if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
 
     return created;
+  }
+
+  // @Interval(60000)
+  @Cron(CronExpression.EVERY_MINUTE)
+  async handleInterval() {
+    const symbols = await this.symbolsService.findAll();
+    if (symbols.error) return console.log('try again in 1 minute');
+
+    for (let symbol of symbols) {
+      if ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
+        console.log(symbol, "Ignored. Manual sync required.");
+        continue;
+      }
+
+      if (new Date().getTime() + 130000 > symbol.lastSync.getTime()) {
+        const created = await this.marketHistoryService.create(symbol, symbol.lastSync);
+        if (created.error) console.log(created.error);
+        console.log(symbol.exchange.name, created);
+      }
+    }
   }
 
   // @Patch(':id')

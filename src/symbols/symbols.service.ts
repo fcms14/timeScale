@@ -13,8 +13,9 @@ export class SymbolsService {
     catch (error) { return { error: error }; }
   }
 
-  async findAll(): Promise<Entity[]> {
-    return this.prisma.symbol.findMany({ include: { exchange: true } });
+  async findAll(): Promise<Entity[] | any> {
+    try { return this.prisma.symbol.findMany({ include: { exchange: true } }); }
+    catch (error) { return { error: error }; }
   }
 
   async findOne(where: Prisma.SymbolWhereInput): Promise<Entity | any> {
