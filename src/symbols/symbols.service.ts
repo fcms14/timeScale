@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma } from '@prisma/client';
@@ -6,7 +7,19 @@ import { Symbol as Entity } from '../symbols/entities/symbol.entity';
 
 @Injectable()
 export class SymbolsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private readonly httpService: HttpService,
+    private prisma: PrismaService
+  ) { }
+
+  async fetchSymbols(i_exchange: string): Promise<[] | any> {
+    const url = `https://ccxt-swagger.up.railway.app/market-history/symbols/${i_exchange}`;
+    try {
+      const response = await this.httpService.axiosRef.get(url);
+      return response.data;
+    }
+    catch (error) { return { error: error }; }
+  }
 
   async create(data: Prisma.SymbolCreateInput): Promise<Entity | any> {
     try { return await this.prisma.symbol.create({ data, include: { exchange: true } }); }

@@ -21,6 +21,15 @@ export class ExchangesController {
     return exchange;
   }
 
+  @Get('/fetch')
+  @ApiOkResponse({ description: 'List of supported exchanges', type: Array, isArray: true })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No content' })
+  async fetchExchanges() {
+    const exchanges = await this.exchangesService.fetchExchanges();
+    if (exchanges.error) throw new HttpException({ status: HttpStatus.NO_CONTENT, message: exchanges.error }, HttpStatus.NO_CONTENT);
+    return exchanges;
+  }
+
   @Get()
   @ApiOkResponse({ description: 'A list of exchanges', type: Entity, isArray: true })
   findAll() {

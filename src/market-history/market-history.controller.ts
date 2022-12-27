@@ -6,6 +6,7 @@ import { ApiCreatedResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs
 import { HttpException } from '@nestjs/common/exceptions';
 import { HttpStatus } from '@nestjs/common/enums';
 import { MarketHistory as Entity } from './entities/market-history.entity';
+import { FetchSymbol } from './entities/fetch-symbol.entity';
 import { Cron, CronExpression, Interval } from '@nestjs/schedule';
 
 @ApiTags('marketHistory')
@@ -16,35 +17,22 @@ export class MarketHistoryController {
     private readonly symbolsService: SymbolsService
   ) { }
 
-  // @Post()
-  // create(@Body() createMarketHistoryDto: CreateMarketHistoryDto) {
-  //   console.log(createMarketHistoryDto);
-  //   return createMarketHistoryDto;
-  //   // return this.marketHistoryService.create(createMarketHistoryDto);
-  // }
-
-  // @Get()
-  // findAll() {
-  //   return this.marketHistoryService.fetchAll();
-  // }
-
-  @Get(':exchange/:ticker')
-  @ApiOkResponse({ description: 'Market history from given exchange and symbol ticker', type: Entity, isArray: false })
+  @Get('fetch-symbol/:exchange/:ticker')
+  @ApiOkResponse({ description: 'Market history from given exchange and symbol ticker', type: FetchSymbol, isArray: false })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No content' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
-  async findOneByTicker(
+  async fetchSymbol(
     @Param('exchange') name: string,
     @Param('ticker') ticker: string
   ) {
     const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'SYMBOL NOT FOUND', message: symbol.error }, HttpStatus.NOT_FOUND);
-    const created = await this.marketHistoryService.create(symbol);
+    const created = await this.marketHistoryService.fetchSymbol(symbol);
     if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
 
     return created;
   }
 
-  // @Interval(60000)
   @Cron(CronExpression.EVERY_HOUR)
   async handleInterval() {
     const symbols = await this.symbolsService.findAll();
@@ -57,20 +45,10 @@ export class MarketHistoryController {
       }
 
       if (new Date().getTime() + 130000 > symbol.lastSync.getTime()) {
-        const created = await this.marketHistoryService.create(symbol);
+        const created = await this.marketHistoryService.fetchSymbol(symbol);
         if (created.error) console.log(created.error);
         console.log(symbol.exchange.name, created);
       }
     }
   }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateMarketHistoryDto: UpdateMarketHistoryDto) {
-  //   return this.marketHistoryService.update(+id, updateMarketHistoryDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.marketHistoryService.remove(+id);
-  // }
 }

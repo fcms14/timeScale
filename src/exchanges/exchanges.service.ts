@@ -1,10 +1,23 @@
+import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Exchange, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ExchangesService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private readonly httpService: HttpService,
+    private prisma: PrismaService
+  ) { }
+
+  async fetchExchanges(): Promise<[] | any> {
+    const url = `https://ccxt-swagger.up.railway.app/market-history/exchanges`;
+    try {
+      const response = await this.httpService.axiosRef.get(url);
+      return response.data;
+    }
+    catch (error) { return { error: error }; }
+  }
 
   async create(data: Prisma.ExchangeCreateInput): Promise<Exchange | any> {
     try { return await this.prisma.exchange.create({ data }); }

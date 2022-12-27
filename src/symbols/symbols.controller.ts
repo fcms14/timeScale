@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { SymbolsService } from './symbols.service';
 import { CreateSymbolDto } from './dto/create-symbol.dto';
-import { ApiCreatedResponse, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOkResponse, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HttpException } from '@nestjs/common/exceptions';
 import { HttpStatus } from '@nestjs/common/enums';
 import { ParseIntPipe } from '@nestjs/common/pipes';
@@ -10,17 +10,30 @@ import { Symbol as Entity } from './entities/symbol.entity';
 @ApiTags('symbols')
 @Controller('symbols')
 export class SymbolsController {
-  constructor(private readonly symbolsService: SymbolsService) {}
+  constructor(private readonly symbolsService: SymbolsService) { }
 
   @Post()
   @ApiCreatedResponse({ description: 'A created symbol', type: Entity, isArray: false })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
   async create(@Body() createSymbolDto: CreateSymbolDto) {
     createSymbolDto.lastSync = new Date(createSymbolDto.lastSync);
-    createSymbolDto.exchange = {connect: {id: Number(createSymbolDto.exchange)}};
+    createSymbolDto.exchange = { connect: { id: Number(createSymbolDto.exchange) } };
     const symbol = await this.symbolsService.create(createSymbolDto);
     if (symbol.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: symbol.error }, HttpStatus.CONFLICT);
     return symbol;
+  }
+
+  @ApiParam({
+    name: "i_exchange",
+    description: `Required to list the Tickers Available on Exchanges`,
+  })
+  @Get('/fetch/:i_exchange')
+  @ApiOkResponse({ description: 'List of Tickers Available on Exchanges', type: Array, isArray: true })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No content' })
+  async fetchSymbols(@Param('i_exchange') i_exchange: string) {
+    const symbols = await this.symbolsService.fetchSymbols(i_exchange);
+    if (symbols.error) throw new HttpException({ status: HttpStatus.NO_CONTENT, message: symbols.error }, HttpStatus.NO_CONTENT);
+    return symbols;
   }
 
   @Get()
@@ -55,7 +68,7 @@ export class SymbolsController {
   @ApiResponse({ status: HttpStatus.NOT_ACCEPTABLE, description: 'Not acceptable' })
   async update(@Param('id', ParseIntPipe) id: number, @Body() updateSymbolDto: CreateSymbolDto) {
     updateSymbolDto.lastSync = new Date(updateSymbolDto.lastSync);
-    updateSymbolDto.exchange = {connect: {id: Number(updateSymbolDto.exchange)}};
+    updateSymbolDto.exchange = { connect: { id: Number(updateSymbolDto.exchange) } };
     const symbol = await this.symbolsService.update({ where: { id }, data: updateSymbolDto });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_ACCEPTABLE, message: symbol.error }, HttpStatus.NOT_ACCEPTABLE);
     return symbol;
