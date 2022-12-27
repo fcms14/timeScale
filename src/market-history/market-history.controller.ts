@@ -45,7 +45,7 @@ export class MarketHistoryController {
   }
 
   // @Interval(60000)
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_HOUR)
   async handleInterval() {
     const symbols = await this.symbolsService.findAll();
     if (symbols.error) return console.log('try again in 1 minute');
