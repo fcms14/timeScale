@@ -11,14 +11,11 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
-  async filterHistory(filter: { dt: { gte: Date, lte: Date | null }, symbol: { ticker: string, exchange: { name: string } } }) {
-    let where = {};
-    if (!filter.dt.lte) {
-      where = { dt: { gte: new Date(filter.dt.gte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
-    }
-    else {
-      where = { dt: { gte: new Date(filter.dt.gte), lte: new Date(filter.dt.lte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
-    }
+  async filterHistory(filter: { dt: { gte: Date, lte: Date | null }, symbol: { ticker: string, exchange: { name: string } } }): Promise<MarketHistory | any> {
+    const where = !filter.dt.lte ?
+      { dt: { gte: new Date(filter.dt.gte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
+      :
+      { dt: { gte: new Date(filter.dt.gte), lte: new Date(filter.dt.lte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
 
     try {
       return await this.prisma.marketHistory.findMany({

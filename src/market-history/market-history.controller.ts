@@ -26,30 +26,11 @@ export class MarketHistoryController {
     @Param('ticker') ticker: string
   ) {
     const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
-    if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'SYMBOL NOT FOUND', message: symbol.error }, HttpStatus.NOT_FOUND);
+    if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'Symbol not found', message: symbol.error }, HttpStatus.NOT_FOUND);
     const created = await this.marketHistoryService.fetchSymbol(symbol);
     if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
 
     return created;
-  }
-
-  @Cron(CronExpression.EVERY_HOUR)
-  async handleInterval() {
-    const symbols = await this.symbolsService.findAll();
-    if (symbols.error) return console.log('try again in 1 minute');
-
-    for (let symbol of symbols) {
-      if ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
-        console.log(symbol, "Ignored. Manual sync required.");
-        continue;
-      }
-
-      if (new Date().getTime() + 130000 > symbol.lastSync.getTime()) {
-        const created = await this.marketHistoryService.fetchSymbol(symbol);
-        if (created.error) console.log(created.error);
-        console.log(symbol.exchange.name, created);
-      }
-    }
   }
 
   @ApiParam({
@@ -78,7 +59,7 @@ export class MarketHistoryController {
     type: Date
   })
   @Get(':i_exchange/:i_ticker/:i_timeFrame/:i_start')
-  @ApiOkResponse({ description: 'Market History', type: Array, isArray: true })
+  @ApiOkResponse({ description: 'Market History', type: Entity, isArray: true })
   @ApiResponse({ status: 404, description: 'Not Found.' })
   async filterHistory(
     @Param('i_exchange') i_exchange: string,
@@ -89,5 +70,24 @@ export class MarketHistoryController {
   ) {
     const period = await this.marketHistoryService.filterHistory({ dt: { gte: i_start, lte: i_end }, symbol: { ticker: i_ticker, exchange: { name: i_exchange } } });
     return period;
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleInterval() {
+    const symbols = await this.symbolsService.findAll();
+    if (symbols.error) return console.log('try again in 1 minute');
+
+    for (let symbol of symbols) {
+      if ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
+        console.log(symbol, "Ignored. Manual sync required.");
+        continue;
+      }
+
+      if (new Date().getTime() + 130000 > symbol.lastSync.getTime()) {
+        const created = await this.marketHistoryService.fetchSymbol(symbol);
+        if (created.error) console.log(created.error);
+        console.log(symbol.exchange.name, created);
+      }
+    }
   }
 }

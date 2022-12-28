@@ -15,7 +15,12 @@ export class ExchangesController {
   @Post()
   @ApiCreatedResponse({ description: 'A created exchange', type: Entity, isArray: false })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not found' })
   async create(@Body() createExchangeDto: CreateExchangeDto) {
+
+    const exchanges = await this.fetchExchanges();
+    if (!exchanges.includes(createExchangeDto.name)) throw new HttpException({ status: HttpStatus.NOT_FOUND, message: { title: "Exchange not available. Choose one of these:", exchanges } }, HttpStatus.NOT_FOUND);
+
     const exchange = await this.exchangesService.create(createExchangeDto);
     if (exchange.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: exchange.error }, HttpStatus.CONFLICT);
     return exchange;

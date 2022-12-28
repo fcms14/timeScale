@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { SymbolsService } from './symbols.service';
+import { ExchangesService } from 'src/exchanges/exchanges.service';
 import { CreateSymbolDto } from './dto/create-symbol.dto';
 import { ApiCreatedResponse, ApiOkResponse, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HttpException } from '@nestjs/common/exceptions';
@@ -10,12 +11,23 @@ import { Symbol as Entity } from './entities/symbol.entity';
 @ApiTags('symbols')
 @Controller('symbols')
 export class SymbolsController {
-  constructor(private readonly symbolsService: SymbolsService) { }
+  constructor(
+    private readonly symbolsService: SymbolsService,
+    private readonly exchangesService: ExchangesService
+  ) { }
 
   @Post()
   @ApiCreatedResponse({ description: 'A created symbol', type: Entity, isArray: false })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not found' })
   async create(@Body() createSymbolDto: CreateSymbolDto) {
+
+    const exchange = await this.exchangesService.findOne({ id: Number(createSymbolDto.exchange) });
+    if (exchange.error) throw new HttpException({ status: HttpStatus.NO_CONTENT, message: exchange.error }, HttpStatus.NOT_FOUND);
+
+    const symbols = await this.fetchSymbols(exchange.name);
+    if (!symbols.includes(createSymbolDto.ticker)) throw new HttpException({ status: HttpStatus.NOT_FOUND, message: { title: "Symbol not available. Choose one of these:", symbols } }, HttpStatus.NOT_FOUND);
+
     createSymbolDto.lastSync = new Date(createSymbolDto.lastSync);
     createSymbolDto.exchange = { connect: { id: Number(createSymbolDto.exchange) } };
     const symbol = await this.symbolsService.create(createSymbolDto);
