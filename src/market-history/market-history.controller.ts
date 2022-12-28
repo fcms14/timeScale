@@ -46,6 +46,11 @@ export class MarketHistoryController {
     type: String
   })
   @ApiParam({
+    name: 'i_timeFrame',
+    enum: ['1m', '1h', '1d'],
+    description: `Required to query the market history`,
+  })
+  @ApiParam({
     name: 'i_start',
     example: '2022-12-27 15:00:00',
     description: `Required to filter the period starting at`,
@@ -60,15 +65,16 @@ export class MarketHistoryController {
   })
   @Get(':i_exchange/:i_ticker/:i_timeFrame/:i_start')
   @ApiOkResponse({ description: 'Market History', type: Entity, isArray: true })
-  @ApiResponse({ status: 404, description: 'Not Found.' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found.' })
   async filterHistory(
     @Param('i_exchange') i_exchange: string,
     @Param('i_ticker') i_ticker: string,
-    // @Param('i_timeFrame') i_timeFrame: string,
+    @Param('i_timeFrame') i_timeFrame: string,
     @Param('i_start') i_start: Date,
     @Query('i_end') i_end?: Date | null
   ) {
-    const period = await this.marketHistoryService.filterHistory({ dt: { gte: i_start, lte: i_end }, symbol: { ticker: i_ticker, exchange: { name: i_exchange } } });
+    const period = await this.marketHistoryService.filterHistory({ i_exchange, i_ticker, i_timeFrame, i_start, i_end });
+    if (period.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, message: period.error }, HttpStatus.NOT_FOUND);
     return period;
   }
 
@@ -79,7 +85,7 @@ export class MarketHistoryController {
 
     for (let symbol of symbols) {
       if ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
-        console.log(symbol, "Ignored. Manual sync required.");
+        console.log("Ignored. Manual sync required.", symbol);
         continue;
       }
 

@@ -11,21 +11,39 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
-  async filterHistory(filter: { dt: { gte: Date, lte: Date | null }, symbol: { ticker: string, exchange: { name: string } } }): Promise<MarketHistory | any> {
-    const where = !filter.dt.lte ?
-      { dt: { gte: new Date(filter.dt.gte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
-      :
-      { dt: { gte: new Date(filter.dt.gte), lte: new Date(filter.dt.lte) }, symbol: { ticker: filter.symbol.ticker, exchange: { name: filter.symbol.exchange.name } } }
+  async filterHistory(where: {i_exchange: string, i_ticker: string, i_timeFrame: string, i_start: Date, i_end: Date }): Promise<MarketHistory | any> {
+    const table   = ['1m', '1h', '1d'].indexOf(where.i_timeFrame);
+    const buckets = [
+      'MarketHistory',
+      // 'five_minute_bars',
+      // 'fifteen_minute_bars',
+      // 'thirty_minute_bars',
+      'hourly_bars',
+      // 'two_hour_bars',
+      // 'three_hour_bars',
+      // 'four_hour_bars',
+      // 'six_hour_bars',
+      // 'twelve_hour_bars',
+      'daily_bars',
+      // 'weekly_bars',
+      // 'monthly_bars'
+    ];
+    const column = buckets[table] == 'MarketHistory' ? 'dt' : 'bucket';
+    const endAt = where.i_end ? `AND   ${column} <= '${where.i_end}' ` : "";
+    const sql = `
+      SELECT 
+        "symbolId", ${column}, open, high, low, close, volume 
+      FROM tsdb."${buckets[table]}" as t
+      INNER JOIN tsdb."Symbol"   as s ON t."symbolId" = s.id
+      INNER JOIN tsdb."Exchange" as e ON s."exchangeId" = e.id
+      WHERE ${column} >= '${where.i_start}'
+      ${endAt}
+      AND   s.ticker   = '${where.i_ticker}'
+      AND   e.name     = '${where.i_exchange}'
+      ORDER BY ${column} ASC;
+    `;
 
-    try {
-      return await this.prisma.marketHistory.findMany({
-        // include: { symbol: { include: { exchange: true } } },
-        where,
-        orderBy: {
-          dt: 'asc'
-        },
-      });
-    }
+    try { return await this.prisma.$queryRawUnsafe(sql); }
     catch (error) { return { error: error }; }
   }
 
