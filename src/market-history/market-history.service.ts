@@ -11,25 +11,27 @@ export class MarketHistoryService {
     private prisma: PrismaService
   ) { }
 
-  async filterHistory(where: {i_exchange: string, i_ticker: string, i_timeFrame: string, i_start: Date, i_end: Date }): Promise<MarketHistory | any> {
-    const table   = ['1m', '1h', '1d'].indexOf(where.i_timeFrame);
+  async filterHistory(where: { i_exchange: string, i_ticker: string, i_timeFrame: string, i_start: Date, i_end: Date }): Promise<MarketHistory | any> {
+    const table   = ['1m', '4m', '5m', '10m', '15m', '30m', '1h', '2h', '3h', '4h', '6h', '12h', '1d', '1w', '1M'].indexOf(where.i_timeFrame);
     const buckets = [
       'MarketHistory',
-      // 'five_minute_bars',
-      // 'fifteen_minute_bars',
-      // 'thirty_minute_bars',
+      'four_minutes_bars',
+      'five_minutes_bars',
+      'ten_minutes_bars',
+      'fifteen_minutes_bars',
+      'thirty_minutes_bars',
       'hourly_bars',
-      // 'two_hour_bars',
-      // 'three_hour_bars',
-      // 'four_hour_bars',
-      // 'six_hour_bars',
-      // 'twelve_hour_bars',
+      'two_hours_bars',
+      'three_hours_bars',
+      'four_hours_bars',
+      'six_hours_bars',
+      'twelve_hours_bars',
       'daily_bars',
-      // 'weekly_bars',
-      // 'monthly_bars'
+      'weekly_bars',
+      'monthly_bars'
     ];
     const column = buckets[table] == 'MarketHistory' ? 'dt' : 'bucket';
-    const endAt = where.i_end ? `AND   ${column} <= '${where.i_end}' ` : "";
+    const endAt = where.i_end ? `AND ${column} <= '${where.i_end}' ` : "";
     const sql = `
       SELECT 
         "symbolId", ${column}, open, high, low, close, volume 

@@ -7,7 +7,7 @@ import { HttpException } from '@nestjs/common/exceptions';
 import { HttpStatus } from '@nestjs/common/enums';
 import { MarketHistory as Entity } from './entities/market-history.entity';
 import { FetchSymbol } from './entities/fetch-symbol.entity';
-import { Cron, CronExpression, Interval } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @ApiTags('marketHistory')
 @Controller('market-history')
@@ -18,7 +18,7 @@ export class MarketHistoryController {
   ) { }
 
   @Get('fetch-symbol/:exchange/:ticker')
-  @ApiOkResponse({ description: 'Market history from given exchange and symbol ticker', type: FetchSymbol, isArray: false })
+  @ApiOkResponse({ description: 'Manual sync market-history from given exchange and symbol ticker', type: FetchSymbol, isArray: false })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No content' })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
   async fetchSymbol(
@@ -47,7 +47,7 @@ export class MarketHistoryController {
   })
   @ApiParam({
     name: 'i_timeFrame',
-    enum: ['1m', '1h', '1d'],
+    enum: ['1m', '4m', '5m', '10m', '15m', '30m', '1h', '2h', '3h', '4h', '6h', '12h', '1d', '1w', '1M'],
     description: `Required to query the market history`,
   })
   @ApiParam({
@@ -81,7 +81,7 @@ export class MarketHistoryController {
   @Cron(CronExpression.EVERY_HOUR)
   async handleInterval() {
     const symbols = await this.symbolsService.findAll();
-    if (symbols.error) return console.log('try again in 1 minute');
+    if (symbols.error) return console.log('try again in 1 hour');
 
     for (let symbol of symbols) {
       if ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
