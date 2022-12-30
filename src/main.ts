@@ -15,12 +15,14 @@ async function bootstrap() {
     .addTag('exchanges')
     .addTag('symbols')
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
   const prismaService = app.get(PrismaService);
   await prismaService.enableShutdownHooks(app)
 
+  app.enableCors();
   await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
