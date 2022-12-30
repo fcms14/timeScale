@@ -36,4 +36,8 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 queries.sql
+queries-compress.sql
+queries-scratch.sql
+queries-createContinuous.sql
+queries-refreshContinuous.sql
 .env

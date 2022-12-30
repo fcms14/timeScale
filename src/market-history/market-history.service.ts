@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { MarketHistory, Prisma } from '@prisma/client';
 import { Symbol } from '../symbols/entities/symbol.entity';
+import { FetchSymbol } from './entities/fetch-symbol.entity';
 
 @Injectable()
 export class MarketHistoryService {
@@ -34,7 +35,7 @@ export class MarketHistoryService {
     const endAt = where.i_end ? `AND ${column} <= '${where.i_end}' ` : "";
     const sql = `
       SELECT 
-        "symbolId", ${column}, open, high, low, close, volume 
+        "symbolId", ${column} as dt, open, high, low, close, volume 
       FROM tsdb."${buckets[table]}" as t
       INNER JOIN tsdb."Symbol"   as s ON t."symbolId" = s.id
       INNER JOIN tsdb."Exchange" as e ON s."exchangeId" = e.id
@@ -77,22 +78,18 @@ export class MarketHistoryService {
     catch (error) { return { error: error }; }
   }
 
-  async fetchSymbol(symbol: Symbol): Promise<MarketHistory | any> {
+  async fetchSymbol(symbol: Symbol): Promise<FetchSymbol | any> {
     try {
       const response = await this.fetchOHLCV(symbol);
       if (response.error) return { error: response }
 
       const update = response.pop();
-      const rowsInserted = await this.prisma.marketHistory.createMany({ data: response, skipDuplicates: true });
+      const created = await this.prisma.marketHistory.createMany({ data: response, skipDuplicates: true });
       const updatedSymbol = await this.prisma.symbol.update({ data: { lastSync: update.dt }, where: { id: update.symbolId }, include: { exchange: true } });
 
-      console.log(`${new Date()} -  ${updatedSymbol.lastSync} - Rows: ${rowsInserted.count} -> ${symbol.exchange.name} / ${symbol.ticker}`);
+      console.log(`${new Date()} -  ${updatedSymbol.lastSync} - Rows: ${created.count} -> ${symbol.exchange.name} / ${symbol.ticker}`);
 
-      if ((new Date().getTime() - updatedSymbol.lastSync.getTime()) > 10800000) {
-        await this.fetchSymbol(updatedSymbol);
-      }
-
-      return { rowsInserted: rowsInserted.count, lastSync: updatedSymbol.lastSync, dateNow: new Date() };
+      return { created: created.count, lastSync: updatedSymbol.lastSync, dateNow: new Date() };
     }
     catch (error) { return { error: error }; }
   }

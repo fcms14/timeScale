@@ -17,22 +17,6 @@ export class MarketHistoryController {
     private readonly symbolsService: SymbolsService
   ) { }
 
-  @Get('fetch-symbol/:exchange/:ticker')
-  @ApiOkResponse({ description: 'Manual sync market-history from given exchange and symbol ticker', type: FetchSymbol, isArray: false })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No content' })
-  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
-  async fetchSymbol(
-    @Param('exchange') name: string,
-    @Param('ticker') ticker: string
-  ) {
-    const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
-    if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'Symbol not found', message: symbol.error }, HttpStatus.NOT_FOUND);
-    const created = await this.marketHistoryService.fetchSymbol(symbol);
-    if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
-
-    return created;
-  }
-
   @ApiParam({
     name: 'i_exchange',
     example: 'BITMEX',
@@ -76,6 +60,27 @@ export class MarketHistoryController {
     const period = await this.marketHistoryService.filterHistory({ i_exchange, i_ticker, i_timeFrame, i_start, i_end });
     if (period.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, message: period.error }, HttpStatus.NOT_FOUND);
     return period;
+  }
+
+  @Get('fetch-symbol/:exchange/:ticker')
+  @ApiOkResponse({ description: 'Manual sync market-history from given exchange and symbol ticker', type: FetchSymbol, isArray: false })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'No content' })
+  @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Conflicted' })
+  async fetchSymbol(
+    @Param('exchange') name: string,
+    @Param('ticker') ticker: string
+  ) {
+    const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
+    if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'Symbol not found', message: symbol.error }, HttpStatus.NOT_FOUND);
+    let created: FetchSymbol | any;
+    
+    while ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
+      created = await this.marketHistoryService.fetchSymbol(symbol);
+      if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
+      symbol.lastSync = created.lastSync;
+    }
+
+    return created;
   }
 
   @Cron(CronExpression.EVERY_HOUR)
