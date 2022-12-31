@@ -57,7 +57,7 @@ export class MarketHistoryController {
     @Param('i_start') i_start: Date,
     @Query('i_end') i_end?: Date | null
   ) {
-    const period = await this.marketHistoryService.filterHistory({ i_exchange, i_ticker, i_timeFrame, i_start, i_end });
+    const period = await this.marketHistoryService.filterHistory({ i_exchange: i_exchange.toLowerCase(), i_ticker: i_ticker.toUpperCase(), i_timeFrame, i_start, i_end });
     if (period.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, message: period.error }, HttpStatus.NOT_FOUND);
     return period;
   }
@@ -70,17 +70,17 @@ export class MarketHistoryController {
     @Param('exchange') name: string,
     @Param('ticker') ticker: string
   ) {
-    const symbol = await this.symbolsService.findByTickerAndExchange({ ticker, exchange: { name } });
+    const symbol = await this.symbolsService.findByTickerAndExchange({ ticker: ticker.toUpperCase(), exchange: { name: name.toLowerCase() } });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_FOUND, name: 'Symbol not found', message: symbol.error }, HttpStatus.NOT_FOUND);
     let created: FetchSymbol | any;
-    
-    while ((new Date().getTime() - symbol.lastSync.getTime()) > 10800000) {
+
+    while ((new Date().getTime() - symbol.lastSync.getTime()) > 130000) {
       created = await this.marketHistoryService.fetchSymbol(symbol);
       if (created.error) throw new HttpException({ status: HttpStatus.CONFLICT, message: created.error }, HttpStatus.CONFLICT);
       symbol.lastSync = created.lastSync;
     }
 
-    return created;
+    return created || new FetchSymbol();
   }
 
   @Cron(CronExpression.EVERY_HOUR)

@@ -43,7 +43,7 @@ export class SymbolsController {
   @ApiOkResponse({ description: 'List of Tickers Available on Exchanges', type: Array, isArray: true })
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No content' })
   async fetchSymbols(@Param('i_exchange') i_exchange: string) {
-    const symbols = await this.symbolsService.fetchSymbols(i_exchange);
+    const symbols = await this.symbolsService.fetchSymbols(i_exchange.toLowerCase());
     if (symbols.error) throw new HttpException({ status: HttpStatus.NO_CONTENT, message: symbols.error }, HttpStatus.NO_CONTENT);
     return symbols;
   }
