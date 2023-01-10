@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { SymbolsService } from './symbols.service';
 import { ExchangesService } from 'src/exchanges/exchanges.service';
 import { CreateSymbolDto } from './dto/create-symbol.dto';
+import { UpdateSymbolDto } from './dto/update-symbol.dto';
 import { ApiCreatedResponse, ApiOkResponse, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HttpException } from '@nestjs/common/exceptions';
 import { HttpStatus } from '@nestjs/common/enums';
@@ -78,9 +79,9 @@ export class SymbolsController {
   @Patch(':id')
   @ApiOkResponse({ description: 'An updated symbol', type: Entity, isArray: false })
   @ApiResponse({ status: HttpStatus.NOT_ACCEPTABLE, description: 'Not acceptable' })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() updateSymbolDto: CreateSymbolDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() updateSymbolDto: UpdateSymbolDto) {
     updateSymbolDto.lastSync = new Date(updateSymbolDto.lastSync);
-    updateSymbolDto.exchange = { connect: { id: Number(updateSymbolDto.exchange) } };
+    if (updateSymbolDto.exchange) updateSymbolDto.exchange = { connect: { id: Number(updateSymbolDto.exchange) } };
     const symbol = await this.symbolsService.update({ where: { id }, data: updateSymbolDto });
     if (symbol.error) throw new HttpException({ status: HttpStatus.NOT_ACCEPTABLE, message: symbol.error }, HttpStatus.NOT_ACCEPTABLE);
     return symbol;

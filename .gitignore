@@ -40,4 +40,6 @@ queries-compress.sql
 queries-scratch.sql
 queries-createContinuous.sql
 queries-refreshContinuous.sql
+queries-createMaterializedViews.sql
+queries-compressViews.sql
 .env

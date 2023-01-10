@@ -1,7 +1,7 @@
 export class CreateExchangeDto {
     /**
      * The Exchange Name
-     * @example 'BITMEX'
+     * @example 'bitmex'
      */
     name: string;
 
